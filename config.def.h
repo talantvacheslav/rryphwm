@@ -89,8 +89,10 @@ static const Key keys[] = {
 	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
 	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
 	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
-	{ MODKEY,                       XK_e,      chwxad,        {.i = -15 } },
-	{ MODKEY,                       XK_r,      chwxad,        {.i = +15 } },
+	{ MODKEY,                       XK_e,      chwxad,        {.i = -100 } },
+	{ MODKEY,                       XK_r,      chwxad,        {.i = +100 } },
+	{ MODKEY,                       XK_z,      setgaps,        {.i = -1 } },
+	{ MODKEY,                       XK_x,      setgaps,        {.i = +1 } },
 	TAGKEYS(                        XK_1,                      0)
 	TAGKEYS(                        XK_2,                      1)
 	TAGKEYS(                        XK_3,                      2)
@@ -102,6 +104,7 @@ static const Key keys[] = {
 	TAGKEYS(                        XK_9,                      8)
 	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
 };
+
 
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
@@ -118,4 +121,8 @@ static const Button buttons[] = {
 	{ ClkTagBar,            0,              Button3,        toggleview,     {0} },
 	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
 	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
+	{ ClkClientWin,         MODKEY,         Button4,        chwxad,         {.i =  100} },
+	{ ClkClientWin,         MODKEY,         Button5,        chwxad,         {.i = -100} },
+	{ ClkRootWin,           MODKEY,         Button4,        chwxad,         {.i =  100} },
+	{ ClkRootWin,           MODKEY,         Button5,        chwxad,         {.i = -100} },
 };

@@ -27,7 +27,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -119,6 +118,7 @@ struct Monitor {
 	int by;               /* bar geometry */
 	int mx, my, mw, mh;   /* screen size */
 	int wx, wy, ww, wh;   /* window area  */
+	int gappx;
 	unsigned int seltags;
 	unsigned int sellt;
 	unsigned int tagset[2];
@@ -234,6 +234,7 @@ static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
 static void chwxad(const Arg *arg);
+static void setgaps(const Arg *arg);
 
 /* variables */
 static const char broken[] = "broken";
@@ -316,7 +317,6 @@ int
 applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 {
 	int baseismin;
-	Monitor *m = c->mon;
 
 	/* set minimum possible */
 	*w = MAX(1, *w);
@@ -325,7 +325,7 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 		*h = bh;
 	if (*w < bh)
 		*w = bh;
-	if (resizehints || c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
+	if (resizehints || !c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
 		if (!c->hintsvalid)
 			updatesizehints(c);
 		/* see last two sentences in ICCCM 4.1.2.3 */
@@ -386,8 +386,11 @@ arrangemon(Monitor *m)
 void
 attach(Client *c)
 {
-	c->next = c->mon->clients;
-	c->mon->clients = c;
+    Client **ct;
+    for (ct = &c->mon->clients; *ct; ct = &(*ct)->next);
+	c->next = NULL;
+	*ct = c;
+
 }
 
 void
@@ -1315,15 +1318,9 @@ resizemouse(const Arg *arg)
 
 			nw = MAX(ev.xmotion.x - ocx - 2 * c->bw + 1, 1);
 			nh = MAX(ev.xmotion.y - ocy - 2 * c->bw + 1, 1);
-			if (c->mon->wx + nw >= selmon->wx && c->mon->wx + nw <= selmon->wx + selmon->ww
-			&& c->mon->wy + nh >= selmon->wy && c->mon->wy + nh <= selmon->wy + selmon->wh)
-			{
-				if (!c->isfloating && selmon->lt[selmon->sellt]->arrange
-				&& (abs(nw - c->w) > snap || abs(nh - c->h) > snap))
-					togglefloating(NULL);
-			}
-			if (!selmon->lt[selmon->sellt]->arrange || c->isfloating)
-				resize(c, c->x, c->y, nw, nh, 1);
+
+			resize(c, c->x, c->y, nw, nh, 1);
+			arrange(selmon);
 			break;
 		}
 	} while (ev.type != ButtonRelease);
@@ -1674,22 +1671,28 @@ void chwxad(const Arg *arg){
 }
 
 void
+setgaps(const Arg *arg)
+{
+  if ((arg->i == 0) || (selmon->gappx + arg->i < 0))
+		selmon->gappx = 0;
+	else
+		selmon->gappx += arg->i;
+	arrange(selmon);
+}
+
+void
 tile(Monitor *m)
 {
-	unsigned int i, n, h, mw, my, ty, fx, x;
-
+	unsigned int i, n, fx;
 
 	Client *c;
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 	if (n == 0)
 		return;
 
-	h = m->wh;
-	x = 330;
-
 	for (i = fx = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++){
-			resize(c, m->wx + fx + wxad, m->wy, x, h - (2*c->bw), 0);
-			fx = fx + WIDTH(c);
+			resize(c, m->wx + fx + wxad + m->gappx, m->wy + m->gappx, c->w, MIN(c->h, m->wh - 2 * m->gappx) , 0);
+			fx = fx + WIDTH(c) + m->gappx;
 	}
 }
 
