@@ -387,10 +387,19 @@ void
 attach(Client *c)
 {
     Client **ct;
-    for (ct = &c->mon->clients; *ct; ct = &(*ct)->next);
-	c->next = NULL;
-	*ct = c;
 
+    for (ct = &c->mon->clients; *ct; ct = &(*ct)->next)
+        if (*ct == c->mon->sel)
+            break;
+
+    if (*ct) {
+        c->next = (*ct)->next;
+        (*ct)->next = c;
+    } else {
+        for (ct = &c->mon->clients; *ct; ct = &(*ct)->next);
+        c->next = NULL;
+        *ct = c;
+    }
 }
 
 void
@@ -1132,14 +1141,11 @@ void
 movemouse(const Arg *arg)
 {
 	int x, y, ocx, ocy, nx, ny;
-	Client *c;
+	Client *c, *cc, *p;
 	Monitor *m;
 	XEvent ev;
-	Time lasttime = 0;
 
-	if (!(c = selmon->sel))
-		return;
-	if (c->isfullscreen) /* no support moving fullscreen windows by mouse */
+	if (!(c = selmon->sel) || c->isfullscreen)
 		return;
 	restack(selmon);
 	ocx = c->x;
@@ -1151,17 +1157,13 @@ movemouse(const Arg *arg)
 		return;
 	do {
 		XMaskEvent(dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
-		switch(ev.type) {
+		switch (ev.type) {
 		case ConfigureRequest:
 		case Expose:
 		case MapRequest:
 			handler[ev.type](&ev);
 			break;
 		case MotionNotify:
-			if ((ev.xmotion.time - lasttime) <= (1000 / refreshrate))
-				continue;
-			lasttime = ev.xmotion.time;
-
 			nx = ocx + (ev.xmotion.x - x);
 			ny = ocy + (ev.xmotion.y - y);
 			if (abs(selmon->wx - nx) < snap)
@@ -1172,9 +1174,44 @@ movemouse(const Arg *arg)
 				ny = selmon->wy;
 			else if (abs((selmon->wy + selmon->wh) - (ny + HEIGHT(c))) < snap)
 				ny = selmon->wy + selmon->wh - HEIGHT(c);
-			if (!c->isfloating && selmon->lt[selmon->sellt]->arrange
-			&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
-				togglefloating(NULL);
+
+			if (selmon->lt[selmon->sellt]->arrange && !c->isfloating) {
+				if ((m = recttomon(ev.xmotion.x_root, ev.xmotion.y_root, 1, 1)) != selmon) {
+					sendmon(c, m);
+					selmon = m;
+					focus(NULL);
+				}
+				for (cc = c->mon->clients; cc; cc = cc->next)
+					if (cc != c && !cc->isfloating && ISVISIBLE(cc)
+					&& ev.xmotion.x_root > cc->x && ev.xmotion.x_root < cc->x + cc->w
+					&& ev.xmotion.y_root > cc->y && ev.xmotion.y_root < cc->y + cc->h)
+						break;
+				if (cc) {
+					Client *ps = NULL, *pf = NULL;
+					for (p = c->mon->clients; p; p = p->next) {
+						if (p->next == c) ps = p;
+						if (p->next == cc) pf = p;
+					}
+					if (c->next == cc) {
+						if (ps) ps->next = cc; else c->mon->clients = cc;
+						c->next = cc->next;
+						cc->next = c;
+					} else if (cc->next == c) {
+						if (pf) pf->next = c; else c->mon->clients = c;
+						cc->next = c->next;
+						c->next = cc;
+					} else {
+						if (ps) ps->next = cc; else c->mon->clients = cc;
+						if (pf) pf->next = c; else c->mon->clients = c;
+						Client *tmp = c->next;
+						c->next = cc->next;
+						cc->next = tmp;
+					}
+					focus(c);
+					arrange(c->mon);
+				}
+				break;
+			}
 			if (!selmon->lt[selmon->sellt]->arrange || c->isfloating)
 				resize(c, nx, ny, c->w, c->h, 1);
 			break;
