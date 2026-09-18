@@ -90,6 +90,7 @@ struct Client {
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
 	int bw, oldbw;
+	int ismapped;
 	unsigned int tags;
 	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
 	Client *next;
@@ -230,7 +231,9 @@ static void scroll(const Arg *arg);
 static void setgaps(const Arg *arg);
 static int getcurrenttag(Monitor *m);
 static void scrolltoclient(Client *c);
-
+static void window_set_state(Display *dpy, Window win, long state);
+static void window_map(Display *dpy, Client *c, int deiconify);
+static void window_unmap(Display *dpy, Window win, Window root, int iconify);
 static void loadxrdb(void);
 static void xrdb(const Arg *arg);
 
@@ -1215,7 +1218,7 @@ movemouse(const Arg *arg)
 				}
 				for (cc = c->mon->clients; cc; cc = cc->next)
 					if (cc != c && !cc->isfloating && ISVISIBLE(cc)
-					&& ev.xmotion.x_root > cc->x && ev.xmotion.x_root < cc->x + cc->w
+					&& ev.xmotion.x_root > cc->x && ev.xmotion.x_root < cc->x + c->w
 					&& ev.xmotion.y_root > cc->y && ev.xmotion.y_root < cc->y + cc->h)
 						break;
 				if (cc) {
@@ -1651,8 +1654,52 @@ showhide(Client *c)
 	} else {
 		/* hide clients bottom up */
 		showhide(c->snext);
-		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
+		XMoveWindow(dpy, c->win, c->x, selmon->wh * -1);
 	}
+}
+
+void
+window_set_state(Display *dpy, Window win, long state)
+{
+	long data[] = { state, None };
+
+	XChangeProperty(dpy, win, wmatom[WMState], wmatom[WMState], 32,
+		PropModeReplace, (unsigned char *)data, 2);
+}
+
+void
+window_map(Display *dpy, Client *c, int deiconify)
+{
+	Window win = c->win;
+
+	if (deiconify)
+		window_set_state(dpy, win, NormalState);
+
+	XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
+	XSetInputFocus(dpy, win, RevertToPointerRoot, CurrentTime);
+	XMapWindow(dpy, win);
+	focus(NULL);
+}
+
+void
+window_unmap(Display *dpy, Window win, Window root, int iconify)
+{
+	static XWindowAttributes ca, ra;
+
+	XGetWindowAttributes(dpy, root, &ra);
+	XGetWindowAttributes(dpy, win, &ca);
+
+	/* Prevent UnmapNotify events */
+	XSelectInput(dpy, root, ra.your_event_mask & ~SubstructureNotifyMask);
+	XSelectInput(dpy, win, ca.your_event_mask & ~StructureNotifyMask);
+
+	XUnmapWindow(dpy, win);
+	focus(NULL);
+	if (iconify)
+		window_set_state(dpy, win, IconicState);
+
+	XSelectInput(dpy, root, ra.your_event_mask);
+	XSelectInput(dpy, win, ca.your_event_mask);
 }
 
 void
@@ -1741,7 +1788,8 @@ scrolltoclient(Client *c)
 void
 tile(Monitor *m)
 {
-	unsigned int n, fx;
+	unsigned int n;
+	int fx;
 	Client *c;
 	int t = getcurrenttag(m);
 
@@ -1752,7 +1800,15 @@ tile(Monitor *m)
 	for (fx = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next)){
 			resize(c, m->wx + fx + m->offset[t] + m->gappx, m->wy + m->gappx, c->w, MIN(c->h, m->wh - 2 * m->gappx) , 0);
 			fx = fx + WIDTH(c) + m->gappx;
-	}
+			if(c->ismapped && fx + m->offset[t] - WIDTH(c) > 1.25 * m->ww + m->wx ){
+			    window_unmap(dpy, c->win, root, 0);
+				c->ismapped = 0;
+			}else
+			if (!c->ismapped && fx + m->offset[t] - WIDTH(c) < 1.25 * m->ww + m->wx) {
+                window_map(dpy, c, 0);
+                c->ismapped = 1;
+			}
+			}
 }
 
 void
