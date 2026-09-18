@@ -237,6 +237,7 @@ static void window_unmap(Display *dpy, Window win, Window root, int iconify);
 static void loadxrdb(void);
 static void xrdb(const Arg *arg);
 static void togglefullscreen(const Arg *arg);
+static void runautostart(void);
 
 /* variables */
 static const char broken[] = "broken";
@@ -2237,13 +2238,35 @@ xerrorstart(Display *dpy, XErrorEvent *ee)
 	return -1;
 }
 
+void
+runautostart(void)
+{
+	const char *const *cmd = autostart;
+
+	if (fork() == 0) {
+		setsid();
+
+		while (*cmd != NULL) {
+			if (fork() == 0) {
+				execl("/bin/sh", "sh", "-c", *cmd, NULL);
+				exit(1);
+			}
+			cmd++;
+		}
+		exit(0);
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
-	if (argc == 2 && !strcmp("-v", argv[1]))
+    if (argc == 2 && !strcmp("-v", argv[1]))
 		die("dwm-"VERSION);
+	if (argc == 2 && !strcmp("-ignoreautostart", argv[1]))
+		printf("Ignoring autostart");
 	else if (argc != 1)
-		die("usage: dwm [-v]");
+		die("usage: dwm [-v] [-ignoreautostart]"
+          );
 	if (!setlocale(LC_CTYPE, "") || !XSupportsLocale())
 		fputs("warning: no locale support\n", stderr);
 	if (!(dpy = XOpenDisplay(NULL)))
@@ -2257,6 +2280,8 @@ main(int argc, char *argv[])
 		die("pledge");
 #endif /* __OpenBSD__ */
 	scan();
+	if (!(argc == 2 && !strcmp("-ignoreautostart", argv[1])))
+		runautostart();
 	run();
 	cleanup();
 	XCloseDisplay(dpy);
