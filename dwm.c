@@ -236,6 +236,7 @@ static void window_map(Display *dpy, Client *c, int deiconify);
 static void window_unmap(Display *dpy, Window win, Window root, int iconify);
 static void loadxrdb(void);
 static void xrdb(const Arg *arg);
+static void togglefullscreen(const Arg *arg);
 
 /* variables */
 static const char broken[] = "broken";
@@ -1551,6 +1552,14 @@ setfullscreen(Client *c, int fullscreen)
 }
 
 void
+togglefullscreen(const Arg *arg)
+{
+	if (!selmon->sel)
+		return;
+	setfullscreen(selmon->sel, !selmon->sel->isfullscreen);
+}
+
+void
 setup(void)
 {
 	int i;
@@ -1800,6 +1809,7 @@ tile(Monitor *m)
 	for (fx = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next)){
 			resize(c, m->wx + fx + m->offset[t] + m->gappx, m->wy + m->gappx, c->w, MIN(c->h, m->wh - 2 * m->gappx) , 0);
 			fx = fx + WIDTH(c) + m->gappx;
+
 			if(c->ismapped && fx + m->offset[t] - WIDTH(c) > 1.25 * m->ww + m->wx ){
 			    window_unmap(dpy, c->win, root, 0);
 				c->ismapped = 0;
