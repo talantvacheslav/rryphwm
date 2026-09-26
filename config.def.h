@@ -73,15 +73,15 @@ static const char *termcmd[]  = { "kitty", NULL };
 static const Key keys[] = {
 	/* modifier                     key        function        argument */
 	{ MODKEY,                       XK_p,      spawn,           {.v = dmenucmd } },
-	{ MODKEY,	                XK_t,      spawn,           {.v = termcmd } },
+	{ MODKEY,	                    XK_t,      spawn,           {.v = termcmd } },
 	{ MODKEY,                       XK_b,      togglebar,       {0} },
 	{ MODKEY,                       XK_k,      focusstack,      {.i = +1 } },
 	{ MODKEY,                       XK_j,      focusstack,      {.i = -1 } },
 	{ MODKEY,                       XK_Left,   focusstack,      {.i = -1 } },
 	{ MODKEY,                       XK_Right,  focusstack,      {.i = +1 } },
 	{ MODKEY,                       XK_Tab,    view,            {0} },
-	{ MODKEY,		        XK_q,      killclient,      {0} },
-	{ MODKEY, 			XK_F5,     xrdb,            {.v = NULL } },
+	{ MODKEY,		                XK_q,      killclient,      {0} },
+	{ MODKEY, 			            XK_F5,     xrdb,            {.v = NULL } },
 	{ MODKEY,                       XK_f,      togglefullscreen,{0} },
 /*  just not using
 	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
@@ -93,6 +93,7 @@ static const Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } }, */
 	{ MODKEY,                       XK_e,      scroll,        {.i = -100 } },
 	{ MODKEY,                       XK_r,      scroll,        {.i = +100 } },
+	{ MODKEY,                       XK_h,      scroll,        {.i = 0 } },
 /* i prefer use fixed gaps
  * 	{ MODKEY,                       XK_z,      setgaps,        {.i = -1 } },
 	{ MODKEY,                       XK_x,      setgaps,        {.i = +1 } }, */

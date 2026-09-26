@@ -1664,7 +1664,7 @@ showhide(Client *c)
 	} else {
 		/* hide clients bottom up */
 		showhide(c->snext);
-		XMoveWindow(dpy, c->win, c->x, selmon->wh * -1);
+		XMoveWindow(dpy, c->win, c->x, (selmon->wh+selmon->by) * -1);
 	}
 }
 
@@ -1755,9 +1755,13 @@ tagmon(const Arg *arg)
 void
 scroll(const Arg *arg){
     int t = getcurrenttag(selmon);
-    selmon->offset[t] += arg->i;
+    if (arg->i != 0) {
+    selmon->offset[t] += arg->i;}
+    else{
+    selmon->offset[t] = arg->i;}
     tile(selmon);
 }
+
 
 void
 setgaps(const Arg *arg)
@@ -1810,15 +1814,6 @@ tile(Monitor *m)
 	for (fx = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next)){
 			resize(c, m->wx + fx + m->offset[t] + m->gappx, m->wy + m->gappx, c->w, MIN(c->h, m->wh - 2 * m->gappx) , 0);
 			fx = fx + WIDTH(c) + m->gappx;
-
-			if(c->ismapped && fx + m->offset[t] - WIDTH(c) > 1.25 * m->ww + m->wx ){
-			    window_unmap(dpy, c->win, root, 0);
-				c->ismapped = 0;
-			}else
-			if (!c->ismapped && fx + m->offset[t] - WIDTH(c) < 1.25 * m->ww + m->wx) {
-                window_map(dpy, c, 0);
-                c->ismapped = 1;
-			}
 			}
 }
 
